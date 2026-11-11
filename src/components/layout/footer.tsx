@@ -10,7 +10,7 @@ export function Footer() {
 
   return (
     <footer className="relative bg-ink text-slate-400">
-      <Container className="pb-10 pt-16 sm:pt-20">
+      <Container className="py-16 sm:py-20">
         <div className="grid gap-12 lg:grid-cols-[1.3fr_2fr]">
           <div className="max-w-sm">
             <Link href="/" aria-label="HisabMitra — home" className="inline-block rounded-lg">
@@ -79,11 +79,6 @@ export function Footer() {
               </div>
             )}
           </div>
-        </div>
-
-        <div className="mt-14 border-t border-white/10 pt-8">
-          <p className="max-w-3xl text-[0.8rem] leading-relaxed text-slate-400">{BRAND.disclaimer}</p>
-          <p className="mt-4 text-[0.8rem] text-slate-400">{BRAND.copyright}</p>
         </div>
       </Container>
     </footer>

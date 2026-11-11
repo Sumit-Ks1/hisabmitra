@@ -161,5 +161,5 @@ configure MX records with your email provider, then set `NEXT_PUBLIC_CONTACT_EMA
 - The hero dashboard is labelled **Illustrative product preview** and uses fictional data
   ("Demo Residency"), with internally consistent numbers.
 - No testimonials, partner logos, user counts, countdowns, signup forms or rating schema.
-- Footer disclaimer: not affiliated with any government DISCOM, UPPCL, PVVNL, NPCI or BBPS.
+- About and Terms pages state that HisabMitra is not affiliated with any government DISCOM, UPPCL, PVVNL, NPCI or BBPS.
 - Privacy policy accurately states: no forms, no analytics, no cookies of its own, fonts self-hosted.

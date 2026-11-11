@@ -18,7 +18,6 @@ export const BRAND = {
   ],
   disclaimer:
     "HisabMitra is an independent upcoming property management platform. It is not affiliated with any government electricity distribution company, UPPCL, PVVNL, NPCI or BBPS.",
-  copyright: "© 2026 HisabMitra. All rights reserved.",
 } as const;
 
 /** Date the legal pages were last revised. Kept static on purpose. */
