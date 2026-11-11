@@ -1,0 +1,230 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/*  HisabMitra design tokens                                           */
+/* ------------------------------------------------------------------ */
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  /* Core palette */
+  --color-ink: #111827;
+  --color-ink-2: #1f2937;
+  --color-canvas: #f8fafc;
+  --color-surface: #ffffff;
+
+  /* Brand blue — 500 is the signature accent; 600/700 are AA-safe for text & buttons */
+  --color-brand-50: #f0f3ff;
+  --color-brand-100: #e1e7fe;
+  --color-brand-200: #c7d1fd;
+  --color-brand-300: #a3b1ff;
+  --color-brand-400: #7c8fff;
+  --color-brand-500: #4f6ef7;
+  --color-brand-600: #4361ee;
+  --color-brand-700: #3a52d6;
+  --color-brand-800: #2f42ad;
+
+  /* Success green */
+  --color-success-50: #e9f8f0;
+  --color-success-500: #16a36a;
+  --color-success-700: #0f7a4e;
+
+  /* Warm highlight */
+  --color-warm-50: #fef8e7;
+  --color-warm-100: #fdeec4;
+  --color-warm-400: #f5c451;
+  --color-warm-800: #7a5409;
+
+  --shadow-soft: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+  --shadow-lift: 0 1px 2px rgb(16 24 40 / 0.04), 0 18px 40px -18px rgb(17 24 39 / 0.22);
+  --shadow-float: 0 2px 4px rgb(16 24 40 / 0.04), 0 32px 64px -24px rgb(30 41 99 / 0.28);
+
+  --animate-fade-up: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-grow-y: grow-y 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-pulse-dot: pulse-dot 2.4s ease-out infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes grow-y {
+    from {
+      transform: scaleY(0.08);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+  @keyframes pulse-dot {
+    0% {
+      box-shadow: 0 0 0 0 rgb(22 163 106 / 0.45);
+    }
+    70%,
+    100% {
+      box-shadow: 0 0 0 7px rgb(22 163 106 / 0);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Base                                                               */
+/* ------------------------------------------------------------------ */
+@layer base {
+  html {
+    color-scheme: light;
+    scroll-padding-top: 5.5rem;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-100);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Textures                                                           */
+/* ------------------------------------------------------------------ */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(15 23 42 / 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(15 23 42 / 0.055) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+@utility bg-grid-dark {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+@utility bg-dots {
+  background-image: radial-gradient(rgb(15 23 42 / 0.12) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+/* Ruled "register page" lines used in the philosophy section */
+@utility bg-ruled {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 31px,
+    rgb(79 110 247 / 0.12) 31px,
+    rgb(79 110 247 / 0.12) 32px
+  );
+}
+
+@utility mask-fade-b {
+  mask-image: linear-gradient(to bottom, black 40%, transparent);
+}
+
+@utility mask-radial {
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, black 35%, transparent 80%);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Scroll reveal — pure CSS, progressive enhancement, zero JS.        */
+/*  Browsers without scroll-driven animations simply show content.     */
+/* ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: fade-up linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Long-form content (About / Privacy / Terms)                        */
+/* ------------------------------------------------------------------ */
+@layer components {
+  .prose-hm {
+    color: var(--color-slate-600);
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+  .prose-hm > * + * {
+    margin-top: 1.1em;
+  }
+  .prose-hm h2 {
+    margin-top: 2.4em;
+    color: var(--color-ink);
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.35;
+    scroll-margin-top: 6rem;
+  }
+  .prose-hm h3 {
+    margin-top: 1.8em;
+    color: var(--color-ink);
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+  .prose-hm h2 + *,
+  .prose-hm h3 + * {
+    margin-top: 0.6em;
+  }
+  .prose-hm ul {
+    padding-left: 1.25rem;
+    list-style: disc;
+  }
+  .prose-hm li + li {
+    margin-top: 0.4em;
+  }
+  .prose-hm li::marker {
+    color: var(--color-brand-400);
+  }
+  .prose-hm strong {
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+  .prose-hm a {
+    color: var(--color-brand-700);
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: var(--color-brand-200);
+    text-underline-offset: 3px;
+  }
+  .prose-hm a:hover {
+    text-decoration-color: var(--color-brand-700);
+  }
+}
