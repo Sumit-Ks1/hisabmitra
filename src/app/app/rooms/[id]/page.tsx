@@ -185,14 +185,16 @@ export default async function RoomPage({ params }: PageProps<"/app/rooms/[id]">)
                   <option value="other">{t("Other", "Other")}</option>
                 </Select>
               </Field>
-              <Field label={t("Starting reading", "Shuruaati reading")} htmlFor="meter_initial_reading" hint={t("Reading when you started using the app", "App shuru karte waqt ki reading")}>
+              <Field
+                label={t("Starting reading", "Shuruaati reading")}
+                htmlFor="meter_initial_reading"
+                className="col-span-2"
+                hint={t(
+                  "Meter reading when you started using the app. Used only until the first reading is saved; after that each reading continues from the last one. The rate per unit is set once for the building on the Meter readings page.",
+                  "App shuru karte waqt meter ki reading. Sirf pehli reading save hone tak use hoti hai; uske baad har reading pichhli reading se aage chalti hai. Per unit rate poori building ke liye Meter readings page par ek baar set hota hai.",
+                )}
+              >
                 <Input id="meter_initial_reading" name="meter_initial_reading" type="number" inputMode="decimal" min={0} step="0.01" defaultValue={room.meter_initial_reading} />
-              </Field>
-              <Field label={t("Rate per unit (₹)", "Per unit rate (₹)")} htmlFor="per_unit_rate" hint={t("Empty = building rate", "Khaali = building ka rate")}>
-                <Input id="per_unit_rate" name="per_unit_rate" type="number" inputMode="decimal" min={0} step="0.01" defaultValue={room.per_unit_rate ?? ""} />
-              </Field>
-              <Field label={t("Fixed charge (₹/month)", "Fixed charge (₹/mahina)")} htmlFor="fixed_charge">
-                <Input id="fixed_charge" name="fixed_charge" type="number" inputMode="decimal" min={0} step="0.01" defaultValue={room.fixed_charge} />
               </Field>
             </div>
           </div>

@@ -8,7 +8,7 @@ import { BILL_FETCH_COOLDOWN_MINUTES, resolveElectricity } from "@/lib/electrici
 import type { DiscomCode } from "@/lib/electricity/types";
 import { createAdminClient, serviceRoleAvailable } from "@/lib/supabase/server";
 import { isOwnedPath, isUuid } from "@/lib/uploads/rules";
-import { allocationRowSchema, manualBillSchema, monthString, readingSchema } from "@/lib/validation";
+import { allocationRowSchema, electricityRateSchema, manualBillSchema, monthString, readingSchema } from "@/lib/validation";
 import { formToObject, must, ownerAction, validate, type ActionResult } from "./helpers";
 
 const done = () => revalidatePath("/app", "layout");
@@ -163,6 +163,11 @@ export async function markBillPaidOutsideAction(fd: FormData): Promise<ActionRes
   });
 }
 
+/**
+ * Saves a new meter reading (or fixes the room's latest one). The database works
+ * out the previous reading, the units and — for room-meter buildings — charges
+ * them to the room's tenants straight away.
+ */
 export async function saveReadingAction(fd: FormData): Promise<ActionResult> {
   return ownerAction(async ({ supabase, userId, t }) => {
     const v = validate(readingSchema, formToObject(fd));
@@ -173,14 +178,43 @@ export async function saveReadingAction(fd: FormData): Promise<ActionResult> {
     const correction = d.correction === "on";
     must(
       await supabase.rpc("save_meter_reading", {
-        p_room: d.room_id, p_month: d.month, p_current: d.current, p_reading_date: d.reading_date, p_rate: d.rate,
-        p_fixed: d.fixed ?? 0, p_photo_path: photo, p_correction: correction,
+        p_room: d.room_id,
+        p_current: d.current,
+        p_reading_date: d.reading_date,
+        p_photo_path: photo,
+        p_correction: correction,
         p_correction_reason: correction ? d.correction_reason : null,
         p_previous_override: correction && d.previous_override !== "" && d.previous_override !== undefined ? d.previous_override : null,
+        p_reading: d.reading_id || null,
       }),
     );
     done();
-    return { ok: true, message: t("Reading saved", "Reading save ho gayi") };
+    return { ok: true, message: d.reading_id ? t("Reading corrected", "Reading theek ho gayi") : t("Reading saved", "Reading save ho gayi") };
+  });
+}
+
+/** Deletes the room's latest reading and the charges it put on tenant bills. */
+export async function deleteReadingAction(fd: FormData): Promise<ActionResult> {
+  return ownerAction(async ({ supabase, t }) => {
+    const id = String(fd.get("reading_id") ?? "");
+    if (!isUuid(id)) return { ok: false, error: t("Reading not found", "Reading nahi mili") };
+    must(await supabase.rpc("delete_meter_reading", { p_reading: id }));
+    done();
+    return { ok: true, message: t("Reading deleted", "Reading delete ho gayi") };
+  });
+}
+
+/** One per-unit rate for the whole building. Applies to readings saved from now on. */
+export async function saveElectricityRateAction(fd: FormData): Promise<ActionResult> {
+  return ownerAction(async ({ supabase, userId, t }) => {
+    const v = validate(electricityRateSchema, formToObject(fd));
+    if (!v.ok) return v.result;
+    const rows = must(
+      await supabase.from("buildings").update({ electricity_rate: v.data.rate }).eq("id", v.data.building_id).eq("owner_id", userId).select("id"),
+    );
+    if (!rows?.length) return { ok: false, error: t("Building not found", "Building nahi mili") };
+    done();
+    return { ok: true, message: t("Rate saved", "Rate save ho gaya") };
   });
 }
 

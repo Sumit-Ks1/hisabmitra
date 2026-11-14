@@ -29,7 +29,8 @@ beforeAll(async () => {
     await q(`insert into public.tenant_documents (owner_id, building_id, tenant_id, doc_type, file_name, storage_path, mime_type, size_bytes)
              values ($1, $2, $3, 'aadhaar', 'a.pdf', $4, 'application/pdf', 1000)`,
       [a.id, a.buildingId, aTenant, `${a.id}/${aTenant}/a.pdf`]);
-    await q(`select public.save_meter_reading($1, '2026-11-01', 120, '2026-11-20', 8, 0)`, [aRoom]);
+    await q(`update public.buildings set electricity_rate = 8 where id = $1`, [a.buildingId]);
+    await q(`select public.save_meter_reading($1, 120, '2026-11-20')`, [aRoom]);
     await q(`select public.record_payment($1, null, 3000, '2026-11-05', 'cash', null, null, 'rent', 'key-aaaa-0001')`, [aTenant]);
   });
   await db.root(`insert into storage.objects (bucket_id, name) values ('tenant-documents', $1)`, [`${a.id}/${aTenant}/a.pdf`]);
@@ -237,7 +238,10 @@ describe("cross-owner isolation (Owner B attacking Owner A)", () => {
     await expectDbError(db.as(b.id, (q) => q(`select public.generate_invoices($1, '2026-11-01')`, [a.buildingId])), "NOT_FOUND");
     await expectDbError(db.as(b.id, (q) => q(`select public.record_payment($1, null, 100, '2026-11-05', 'cash', null, null, 'rent', 'key-bbbb-0001')`, [aTenant])), "NOT_FOUND");
     await expectDbError(db.as(b.id, (q) => q(`select public.vacate_tenant($1, '2026-11-20', true)`, [aTenant])), "NOT_FOUND");
-    await expectDbError(db.as(b.id, (q) => q(`select public.save_meter_reading($1, '2026-11-01', 999, '2026-11-20', 8, 0)`, [aRoom])), "NOT_FOUND");
+    await expectDbError(db.as(b.id, (q) => q(`select public.save_meter_reading($1, 999, '2026-11-20')`, [aRoom])), "NOT_FOUND");
+    const aReading = await db.as(a.id, (q) => q<{ id: string }>(`select id from public.electricity_meter_readings where room_id = $1`, [aRoom]));
+    await expectDbError(db.as(b.id, (q) => q(`select public.delete_meter_reading($1)`, [aReading[0].id])), "NOT_FOUND");
+    await expectDbError(db.as(b.id, (q) => q(`select public.save_meter_reading($1, 999, '2026-11-20', null, false, null, null, $2)`, [aRoom, aReading[0].id])), "NOT_FOUND");
     await expectDbError(db.as(b.id, (q) => q(`select public.confirm_electricity_charges($1, '2026-11-01', '[]'::jsonb)`, [a.buildingId])), "NOT_FOUND");
   });
 

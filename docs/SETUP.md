@@ -17,7 +17,7 @@ Requirements: Node.js 22 (20 still works but Supabase's client warns about it), 
      npx supabase link --project-ref <your-project-ref>
      npx supabase db push
      ```
-   - **or SQL editor:** open each file in `supabase/migrations/` in name order (`0001` → `0007`) and run it. Run each file once.
+   - **or SQL editor:** open each file in `supabase/migrations/` in name order (`0001`, `0002`, …) and run it. Run each file once. When a new migration is added later, run just that file — **before** deploying the code that needs it.
 3. **Keys.** Project Settings → API. Copy into `.env.local`:
    - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
    - publishable / anon key → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
@@ -144,7 +144,7 @@ Sandbox scenarios are picked by the **last digit of the consumer number**: `0` n
 5. **Tenants → Add**: set joining date to the 16th and watch the first-month calculation. Save.
 6. **Payments**: record a part payment, then another. Check the balance. Try the same UPI reference twice — it is refused.
 7. **Rooms → Swap rooms** with two tenants; check **Room history** on a tenant.
-8. **Electricity → Meter readings**: enter readings; try a lower number (refused). **Tenant charges → Confirm**; see the electricity line on the bill.
+8. **Electricity → Meter readings**: set the rate once at the top, enter a reading for a room with a tenant → the electricity line appears on that tenant's bill at once (tenant page → overview shows rent + electricity = total due). Enter another reading a few days later → it continues from the last one and adds only the new units. Try a lower number or an earlier date (refused); use **Fix** / delete on the last reading.
 9. **Reminders**: preview a message, copy it.
 10. Create a second owner and confirm they see none of the first owner's data.
 11. `npm run build && npm start`, open in Chrome → install the app → turn off the network → reload → offline page.

@@ -143,8 +143,6 @@ export const roomEditSchema = z.object({
   meter_number: optionalText(40),
   meter_type: z.enum(["digital", "analog", "prepaid", "other", ""]).optional(),
   meter_initial_reading: z.coerce.number().min(0).max(99_999_999).optional(),
-  per_unit_rate: z.union([z.literal(""), z.coerce.number().min(0).max(1000)]).optional(),
-  fixed_charge: z.coerce.number().min(0).max(100000).optional(),
 });
 
 export const bulkRoomsSchema = z.object({
@@ -240,17 +238,29 @@ export const manualBillSchema = z.object({
   units: z.union([z.literal(""), z.coerce.number().min(0).max(10_000_000)]).optional(),
 });
 
+/** A meter reading. The previous reading and the rate come from the database, never the form. */
 export const readingSchema = z.object({
   room_id: uuid,
-  month: monthString,
-  current: z.coerce.number({ error: "Enter the meter reading / Meter reading daalein" }).min(0).max(99_999_999),
+  /** set when fixing the room's latest reading; empty for a new reading */
+  reading_id: z.union([z.literal(""), uuid]).optional(),
+  current: z.coerce
+    .number({ error: "Enter the meter reading / Meter reading daalein" })
+    .min(0, "Enter the meter reading / Meter reading daalein")
+    .max(99_999_999, "Reading is too large / Reading bahut badi hai"),
   reading_date: isoDate,
-  rate: z.coerce.number({ error: "Enter rate per unit / Per unit rate daalein" }).min(0).max(1000),
-  fixed: z.coerce.number().min(0).max(100000).optional(),
   photo_path: z.string().max(200).optional().or(z.literal("")),
   correction: z.enum(["on", ""]).optional(),
   correction_reason: optionalText(200),
   previous_override: z.union([z.literal(""), z.coerce.number().min(0).max(99_999_999)]).optional(),
+});
+
+/** The one per-unit rate for the whole building. */
+export const electricityRateSchema = z.object({
+  building_id: uuid,
+  rate: z.coerce
+    .number({ error: "Enter rate per unit / Per unit rate daalein" })
+    .gt(0, "Enter rate per unit / Per unit rate daalein")
+    .max(1000, "Rate is too high / Rate bahut zyada hai"),
 });
 
 export const allocationRowSchema = z.object({

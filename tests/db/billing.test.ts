@@ -331,27 +331,11 @@ describe("monthly cycle, carry-forward, advance and vacating", () => {
 });
 
 describe("electricity", () => {
-  it("rejects a reading lower than the previous one unless it is a reasoned correction", async () => {
+  it("main-bill split: confirmed charges appear on the invoice once, and re-confirming replaces them", async () => {
     await db.as(o.id, async (q) => {
-      await q(`update public.rooms set meter_initial_reading = 1000 where id = $1`, [rooms[1]]);
-      await expectDbError(q(`select public.save_meter_reading($1, '2026-11-01', 950, '2026-11-30', 8, 0)`, [rooms[1]]), "READING_DECREASED");
-      await expectDbError(q(`select public.save_meter_reading($1, '2026-11-01', -5, '2026-11-30', 8, 0)`, [rooms[1]]), "INVALID_READING");
-      await q(`select public.save_meter_reading($1, '2026-11-01', 1085, '2026-11-30', 8, 0)`, [rooms[1]]);
-      const r = await q(`select previous_reading::float as prev, units::float as units from public.electricity_meter_readings where room_id = $1`, [rooms[1]]);
-      expect(r[0]).toMatchObject({ prev: 1000, units: 85 });
-      // next month continues from last month's reading
-      await q(`select public.save_meter_reading($1, '2026-12-01', 1150, '2026-12-30', 8, 0)`, [rooms[1]]);
-      const d = await q(`select previous_reading::float as prev, units::float as units from public.electricity_meter_readings where room_id = $1 and period_month = '2026-12-01'`, [rooms[1]]);
-      expect(d[0]).toMatchObject({ prev: 1085, units: 65 });
-      await expectDbError(q(`select public.save_meter_reading($1, '2026-12-01', 20, '2026-12-30', 8, 0, null, true, '')`, [rooms[1]]), "REASON_REQUIRED");
-      await q(`select public.save_meter_reading($1, '2026-12-01', 20, '2026-12-30', 8, 0, null, true, 'Meter replaced', 0)`, [rooms[1]]);
-      const c = await q(`select units::float as units, is_correction from public.electricity_meter_readings where room_id = $1 and period_month = '2026-12-01'`, [rooms[1]]);
-      expect(c[0]).toMatchObject({ units: 20, is_correction: true });
-    });
-  });
-
-  it("confirmed charges appear on the invoice once, and re-confirming replaces them", async () => {
-    await db.as(o.id, async (q) => {
+      // room-meter buildings are charged per reading and cannot use this step
+      await expectDbError(q(`select public.confirm_electricity_charges($1, '2026-12-01', '[]'::jsonb)`, [o.buildingId]), "METER_MODE");
+      await q(`update public.buildings set electricity_method = 'equal' where id = $1`, [o.buildingId]);
       const t = await tenant(q, { full_name: "Elec Tenant", phone: "9888888881", joined_on: "2026-12-01", bed_id: beds[6] });
       const row = (amount: number) => JSON.stringify([{ tenant_id: t, room_id: rooms[3], method: "submeter", units: 85, base_amount: amount, common_amount: 0, amount }]);
       await q(`select public.confirm_electricity_charges($1, '2026-12-01', $2::jsonb)`, [o.buildingId, row(680)]);
@@ -361,6 +345,7 @@ describe("electricity", () => {
       const items = await q(`select 1 from public.invoice_items i join public.invoices v on v.id = i.invoice_id where v.tenant_id = $1 and i.kind = 'electricity'`, [t]);
       expect(items).toHaveLength(1);
       expect(await q(`select 1 from public.electricity_allocations where tenant_id = $1`, [t])).toHaveLength(1);
+      await q(`update public.buildings set electricity_method = 'submeter' where id = $1`, [o.buildingId]);
     });
   });
 

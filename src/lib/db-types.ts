@@ -180,7 +180,10 @@ export type InvoiceItem = {
   kind: "rent" | "electricity" | "other" | "late_fee" | "opening_balance" | "discount" | "adjustment";
   description: string;
   amount: number;
-  source: "system" | "manual" | "electricity";
+  /** electricity: 'meter' = from a meter reading, 'electricity' = monthly main-bill split */
+  source: "system" | "manual" | "electricity" | "meter";
+  meter_reading_id: string | null;
+  units: number | null;
 };
 
 export type RentPayment = {
@@ -255,11 +258,15 @@ export type ElectricityPayment = {
 export type MeterReading = {
   id: string;
   room_id: string;
+  /** billing period the reading date falls in */
   period_month: string;
   previous_reading: number;
+  /** date of the reading this one continues from (null = the room's first reading) */
+  previous_date: string | null;
   current_reading: number;
   units: number;
   reading_date: string;
+  created_at: string;
   per_unit_rate: number;
   fixed_charge: number;
   photo_path: string | null;

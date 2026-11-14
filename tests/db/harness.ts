@@ -21,10 +21,24 @@ export type Db = {
   setToday: (isoDate: string) => Promise<void>;
 };
 
-export async function createDb(): Promise<Db> {
+const migrationFiles = () => readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort();
+
+/** Applies one migration file (by name prefix, e.g. "0008") to an existing test database. */
+export async function applyMigration(db: Db, prefix: string): Promise<void> {
+  const file = migrationFiles().find((f) => f.startsWith(prefix));
+  if (!file) throw new Error(`No migration ${prefix}`);
+  await db.pg.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
+}
+
+/**
+ * A fresh in-process Postgres with the Supabase shim and the migrations.
+ * `before: "0008"` stops before that migration — for testing upgrades of existing data.
+ */
+export async function createDb(opts: { before?: string } = {}): Promise<Db> {
   const pg = new PGlite();
   await pg.exec(readFileSync(join(process.cwd(), "tests", "db", "shim.sql"), "utf8"));
-  for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) {
+  for (const file of migrationFiles()) {
+    if (opts.before && file >= opts.before) break;
     try {
       await pg.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
     } catch (e) {

@@ -63,8 +63,6 @@ export async function updateRoomAction(fd: FormData): Promise<ActionResult> {
         meter_number: d.meter_number || null,
         meter_type: d.meter_type || null,
         meter_initial_reading: d.meter_initial_reading ?? 0,
-        per_unit_rate: d.per_unit_rate === "" || d.per_unit_rate === undefined ? null : d.per_unit_rate,
-        fixed_charge: d.fixed_charge ?? 0,
       })
       .eq("id", d.id)
       .eq("owner_id", userId);

@@ -58,6 +58,7 @@ The sandbox electricity adapter returns made-up bills and is labelled as such on
 ```
 supabase/migrations/     0001 core · 0002 property · 0003 billing · 0004 electricity & WhatsApp
                          0005 onboarding & admin · 0006 RLS & grants · 0007 storage
+                         0008 running meter readings, charged per reading
 src/
   proxy.ts               Session refresh + first-line route guard
   app/
@@ -103,7 +104,7 @@ The admin can read account-level data (owners, buildings, subscriptions, payment
 
 ### Billing model in one paragraph
 
-Each building has a billing day. On or after it, every active tenant gets one invoice for the period with a rent line (prorated for a mid-period join or exit by the building's rule — calendar days, 30-day month, full month — or a custom first-month amount with a reason). Electricity is added as one line when the owner confirms the month's charges; other charges and discounts are manual lines. Payments are separate rows applied to the chosen invoice first, then oldest dues; any excess is kept as advance and applied automatically to the next invoice. Outstanding = all invoices − all payments − unused advance, so opening the app mid-month always shows the right number. Deposits are tracked separately from rent.
+Each building has a billing day. On or after it, every active tenant gets one invoice for the period with a rent line (prorated for a mid-period join or exit by the building's rule — calendar days, 30-day month, full month — or a custom first-month amount with a reason). Electricity (room-meter buildings): every room has a running chain of readings — a new reading always continues from the last saved one, whenever it was taken — and saving it immediately adds units × the building's single rate to the bills of the tenants who lived in that room since the previous reading, split by days stayed (tenants with electricity included in rent or a fixed monthly amount are skipped). Only the latest reading of a room can be fixed or deleted, which redoes its charges. Buildings that split the main DISCOM bill instead confirm a monthly split. Other charges and discounts are manual lines. Payments are separate rows applied to the chosen invoice first, then oldest dues; any excess is kept as advance and applied automatically to the next invoice. Outstanding = all invoices − all payments − unused advance, so opening the app mid-month always shows the right number. Deposits are tracked separately from rent.
 
 ---
 

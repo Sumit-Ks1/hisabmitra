@@ -82,7 +82,7 @@ export default async function ElectricityPage() {
         <Link href="/app/electricity/readings" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft hover:border-brand-300">
           <Gauge className="size-6 text-brand-600" aria-hidden />
           <p className="mt-2 font-semibold leading-tight text-ink">{t("Meter readings", "Meter readings")}</p>
-          <p className="mt-0.5 text-[0.8rem] text-slate-500">{t("Enter this month's readings", "Is mahine ki reading daalein")}</p>
+          <p className="mt-0.5 text-[0.8rem] text-slate-500">{t("Enter room meter readings", "Room meter ki reading daalein")}</p>
         </Link>
         <Link href="/app/electricity/charges" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft hover:border-brand-300">
           <Calculator className="size-6 text-brand-600" aria-hidden />

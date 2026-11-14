@@ -12,6 +12,7 @@ import { saveTenantNotesAction, setWhatsappConsentAction, updateTenantAction, va
 import { getWorkspace } from "@/lib/data/workspace";
 import type { Invoice, InvoiceItem, RentPayment, Tenant, TenantBalance } from "@/lib/db-types";
 import { fmtDate, fmtPhone, inr, monthLabel } from "@/lib/format";
+import type { T } from "@/lib/i18n";
 import { isUuid } from "@/lib/uploads/rules";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +31,15 @@ export default async function TenantPage({ params, searchParams }: PageProps<"/a
   const tenant = (await supabase.from("tenants").select("*").eq("id", id).eq("owner_id", userId).is("deleted_at", null).maybeSingle()).data as Tenant | null;
   if (!tenant) notFound();
 
-  const [balRes, allocRes, consentRes] = await Promise.all([
+  const [balRes, dueRes, allocRes, consentRes] = await Promise.all([
     supabase.from("v_tenant_balances").select("*").eq("tenant_id", id).eq("owner_id", userId).maybeSingle(),
+    supabase
+      .from("v_invoices")
+      .select("id, period_month, rent_amount, electricity_amount, other_amount, adjustment_amount, total_amount, paid_amount, balance")
+      .eq("tenant_id", id)
+      .eq("owner_id", userId)
+      .gt("balance", 0)
+      .order("period_month"),
     supabase.from("room_allocations").select("id, started_on, ended_on, reason, end_reason, rooms(name), beds(label)").eq("tenant_id", id).eq("owner_id", userId).order("started_on", { ascending: false }).order("created_at", { ascending: false }),
     supabase.from("whatsapp_consents").select("opted_in").eq("tenant_id", id).eq("owner_id", userId).maybeSingle(),
   ]);
@@ -87,6 +95,7 @@ export default async function TenantPage({ params, searchParams }: PageProps<"/a
           <Card>
             <p className="text-[0.88rem] text-slate-500">{balance > 0 ? t("Total due", "Kul baaki") : balance < 0 ? t("Advance with you", "Aapke paas advance") : t("Nothing due", "Kuch baaki nahi")}</p>
             <p className={cn("mt-1 text-[2rem] font-semibold leading-none tracking-[-0.03em] tabular-nums", balance > 0 ? "text-danger-700" : "text-success-700")}>{inr(Math.abs(balance))}</p>
+            {balance > 0 && <DueBreakdown unpaid={(dueRes.data ?? []) as DueRow[]} balance={balance} t={t} />}
             <p className="mt-2 text-[0.85rem] text-slate-500">
               {t("Deposit held", "Deposit jama")}: <b className="text-ink">{inr(bal.deposit_held)}</b> / {inr(tenant.security_deposit)}
             </p>
@@ -272,23 +281,94 @@ async function DocumentsTab({ tenantId, consentAt }: { tenantId: string; consent
   return <DocumentsPanel tenantId={tenantId} consentAt={consentAt} docs={(data ?? []) as Doc[]} />;
 }
 
+type DueRow = Pick<Invoice, "id" | "period_month" | "rent_amount" | "electricity_amount" | "other_amount" | "adjustment_amount" | "total_amount" | "paid_amount" | "balance">;
+
+/**
+ * What the total due is made of, over the months that are not fully paid:
+ * rent + electricity + other − discounts − paid (− any advance) = total due.
+ */
+function DueBreakdown({ unpaid, balance, t }: { unpaid: DueRow[]; balance: number; t: T }) {
+  if (unpaid.length === 0) return null;
+  const sum = (f: (r: DueRow) => number) => unpaid.reduce((a, r) => a + Number(f(r)), 0);
+  const rent = sum((r) => r.rent_amount);
+  const electricity = sum((r) => r.electricity_amount);
+  const other = sum((r) => r.other_amount);
+  const discounts = sum((r) => r.adjustment_amount);
+  const paid = sum((r) => r.paid_amount);
+  // advance money and months paid in excess reduce the total due
+  const credit = Math.round(sum((r) => r.balance) - balance);
+  const months = unpaid.map((r) => monthLabel(r.period_month));
+
+  const line = (label: string, amount: number, tone?: "minus") => (
+    <div className="flex justify-between gap-3 py-0.5">
+      <dt className="text-slate-600">{label}</dt>
+      <dd className={cn("tabular-nums", tone === "minus" ? "text-success-700" : "text-ink")}>{tone === "minus" ? `− ${inr(Math.abs(amount))}` : inr(amount)}</dd>
+    </div>
+  );
+
+  return (
+    <div className="mt-3 rounded-xl bg-slate-50 px-3.5 py-2.5">
+      <p className="text-[0.8rem] text-slate-500">
+        {unpaid.length === 1 ? t(`Bill for ${months[0]}`, `${months[0]} ka bill`) : t(`Bills for ${months.join(", ")}`, `${months.join(", ")} ke bill`)}
+      </p>
+      <dl className="mt-1.5 text-[0.92rem]">
+        {line(t("Rent", "Rent"), rent)}
+        {line(t("Electricity", "Bijli"), electricity)}
+        {other !== 0 && line(t("Other charges", "Doosre charges"), other)}
+        {discounts !== 0 && line(t("Discounts / adjustments", "Discount / adjustment"), discounts, discounts < 0 ? "minus" : undefined)}
+        {paid > 0 && line(t("Paid", "Mila"), paid, "minus")}
+        {credit > 0 && line(t("Advance / extra paid earlier", "Advance / pehle zyada diya"), credit, "minus")}
+        <div className="mt-1 flex justify-between gap-3 border-t border-slate-200 pt-1.5 font-semibold">
+          <dt className="text-ink">{t("Total due", "Kul baaki")}</dt>
+          <dd className="tabular-nums text-danger-700">{inr(balance)}</dd>
+        </div>
+      </dl>
+      {unpaid.length > 1 && (
+        <ul className="mt-2 space-y-0.5 border-t border-slate-200 pt-2 text-[0.8rem] text-slate-500">
+          {unpaid.map((r) => (
+            <li key={r.id} className="flex justify-between gap-3">
+              <span>
+                {monthLabel(r.period_month)} · {t("rent", "rent")} {inr(r.rent_amount)} · {t("electricity", "bijli")} {inr(r.electricity_amount)}
+              </span>
+              <span className="tabular-nums text-slate-700">{inr(r.balance)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 async function ElectricityHistory({ tenantId }: { tenantId: string }) {
   const { supabase, userId, t } = await getWorkspace();
-  const { data } = await supabase.from("electricity_allocations").select("id, period_month, method, units, base_amount, common_amount, amount").eq("tenant_id", tenantId).eq("owner_id", userId).order("period_month", { ascending: false });
-  if (!data?.length) return <EmptyState icon={Plus} title={t("No electricity charges yet", "Abhi koi bijli charge nahi")} body={t("Charges appear here after you confirm them in Electricity.", "Bijli section mein confirm karne ke baad yahan dikhenge.")} />;
+  const { data: invs } = await supabase.from("invoices").select("id, period_month").eq("tenant_id", tenantId).eq("owner_id", userId);
+  const monthOf = new Map((invs ?? []).map((i) => [i.id as string, i.period_month as string]));
+  const { data } = monthOf.size
+    ? await supabase.from("invoice_items").select("id, invoice_id, description, amount, source, created_at").eq("kind", "electricity").eq("owner_id", userId).in("invoice_id", [...monthOf.keys()])
+    : { data: [] };
+  const rows = (data ?? [])
+    .map((r) => ({ ...r, month: monthOf.get(r.invoice_id as string) ?? "" }))
+    .sort((a, b) => b.month.localeCompare(a.month) || String(b.created_at).localeCompare(String(a.created_at)));
+  if (!rows.length) return <EmptyState icon={Plus} title={t("No electricity charges yet", "Abhi koi bijli charge nahi")} body={t("Charges appear here when you save a meter reading for this tenant's room.", "Is tenant ke room ki meter reading save karte hi charge yahan dikhega.")} />;
+  const source: Record<string, string> = {
+    meter: t("Meter reading", "Meter reading"),
+    electricity: t("Main bill split", "Main bill ka hissa"),
+    system: t("Fixed monthly", "Fixed mahina"),
+    manual: t("Added by you", "Aapne joda"),
+  };
   return (
     <Card>
       <ul className="divide-y divide-slate-100">
-        {data.map((a) => (
-          <li key={a.id as string} className="flex items-center justify-between gap-3 py-3">
-            <div>
-              <p className="font-medium text-ink">{monthLabel(a.period_month as string)}</p>
+        {rows.map((r) => (
+          <li key={r.id as string} className="flex items-center justify-between gap-3 py-3">
+            <div className="min-w-0">
+              <p className="font-medium text-ink">{monthLabel(r.month)}</p>
               <p className="text-[0.82rem] text-slate-500">
-                {a.units != null ? `${a.units} ${t("units", "units")} · ` : ""}
-                {Number(a.common_amount) > 0 ? `${t("incl. common area", "common area sahit")} ${inr(a.common_amount as number)}` : (a.method as string)}
+                {r.description || source[r.source as string]}
+                {r.source !== "meter" && r.description && ` · ${source[r.source as string] ?? ""}`}
               </p>
             </div>
-            <p className="font-semibold tabular-nums text-ink">{inr(a.amount as number)}</p>
+            <p className="shrink-0 font-semibold tabular-nums text-ink">{inr(r.amount as number)}</p>
           </li>
         ))}
       </ul>
