@@ -35,6 +35,14 @@
   --color-warm-400: #f5c451;
   --color-warm-800: #7a5409;
 
+  /* Danger red — errors and destructive actions */
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+
   --shadow-soft: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
   --shadow-lift: 0 1px 2px rgb(16 24 40 / 0.04), 0 18px 40px -18px rgb(17 24 39 / 0.22);
   --shadow-float: 0 2px 4px rgb(16 24 40 / 0.04), 0 32px 64px -24px rgb(30 41 99 / 0.28);

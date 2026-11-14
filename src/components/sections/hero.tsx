@@ -18,7 +18,7 @@ export function Hero() {
         <div className="motion-safe:animate-fade-up">
           <Badge tone="neutral" className="bg-white/80 py-1.5 shadow-soft backdrop-blur">
             <span className="size-1.5 rounded-full bg-success-500 motion-safe:animate-pulse-dot" aria-hidden />
-            Built for Indian PG owners · Coming soon
+            Built for Indian PG owners
           </Badge>
         </div>
 
@@ -62,8 +62,8 @@ export function Hero() {
           className="mt-9 flex w-full flex-col items-stretch justify-center gap-3 motion-safe:animate-fade-up min-[420px]:w-auto min-[420px]:flex-row min-[420px]:items-center"
           style={{ animationDelay: "240ms" }}
         >
-          <ButtonLink href="#launch" size="lg">
-            Launching Soon
+          <ButtonLink href="/signup" size="lg">
+            Start Managing Your PG
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
           </ButtonLink>
           <ButtonLink href="#features" size="lg" variant="secondary">

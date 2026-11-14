@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Footer } from "@/components/layout/footer";
-import { Navbar } from "@/components/layout/navbar";
+import { Toaster } from "sonner";
+import { PwaRegister } from "@/components/pwa/pwa-register";
 import { siteConfig } from "@/lib/config";
 import { BRAND } from "@/lib/constants";
 import "./globals.css";
@@ -18,9 +18,6 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-/** The whole site is a static marketing site: fail the build if anything becomes request-time. */
-export const ensureStatic = "navigation";
-
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
@@ -31,7 +28,7 @@ export const metadata: Metadata = {
   keywords: [...BRAND.keywords],
   applicationName: BRAND.name,
   category: "business",
-  alternates: { canonical: "/" },
+  appleWebApp: { capable: true, title: BRAND.name, statusBarStyle: "default" },
   openGraph: {
     type: "website",
     locale: "en_IN",
@@ -50,8 +47,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F8FAFC",
+  themeColor: "#4F6EF7",
   colorScheme: "light",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -62,17 +62,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
       <body className="flex min-h-dvh flex-col">
-        <a
-          href="#main"
-          className="sr-only z-[60] rounded-full bg-ink px-4 py-2 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
-        >
-          Skip to content
-        </a>
-        <Navbar />
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <Footer />
+        {children}
+        <Toaster position="top-center" richColors closeButton toastOptions={{ style: { fontSize: "0.95rem" } }} />
+        <PwaRegister />
       </body>
     </html>
   );

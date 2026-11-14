@@ -1,165 +1,114 @@
-# HisabMitra — Coming-Soon Website
+# HisabMitra
 
 > **PG ka hisaab, ab digital.**
-> Marketing and pre-launch website for HisabMitra, an upcoming PG & hostel management platform for India.
+> A simple, mobile-first PG & hostel management SaaS for India: rooms, tenants, monthly rent, electricity sub-meters, payments and reminders — installable as a PWA.
 
-This repository contains **only the public marketing website**. It has no dashboard, authentication,
-database, payments, BBPS or electricity integrations — by design.
+**Setup, deployment and the first-run test script: [docs/SETUP.md](docs/SETUP.md).**
 
----
+```bash
+npm install
+cp .env.example .env.local   # fill in Supabase keys etc. (see docs/SETUP.md)
+npm run dev
+```
 
-## Tech stack
-
-| Layer      | Choice                                                                 |
-| ---------- | ---------------------------------------------------------------------- |
-| Framework  | Next.js 16 (App Router, Cache Components, fully static output)         |
-| Language   | TypeScript (strict)                                                    |
-| Styling    | Tailwind CSS v4 (design tokens in `src/app/globals.css`)               |
-| Icons      | lucide-react (rendered on the server — no icon JS shipped)             |
-| Fonts      | Geist Sans / Geist Mono via `next/font` (self-hosted at build time)    |
-| Motion     | CSS only (`animation-timeline: view()` reveals, respects reduced motion) |
-
-Runtime dependencies are limited to `next`, `react`, `react-dom` and `lucide-react`.
-Only two small client components exist (the scroll-aware header and the mobile menu).
-The root layout exports `ensureStatic = "navigation"`, so the build **fails** if anything
-ever introduces request-time server rendering — every page is prerendered.
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run build` / `npm start` | Production build / server (the service worker only runs here) |
+| `npm run typecheck` | Route-type generation + `tsc` |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest: business logic + the real SQL migrations on an in-process Postgres |
+| `npm run icons` | Regenerate PWA icons from the logo |
 
 ---
 
-## Project structure
+## What is in the product
+
+**Owner** — sign up (Google or email) → 4-step onboarding → price (rooms × per-room rate) → UPI QR + transaction reference → waits for approval → dashboard, rooms & beds, tenants & documents, allocation and swap, monthly bills, part payments, electricity readings and tenant-wise charges, reminders, reports, settings (Hinglish / English).
+
+**Admin** — overview, searchable owner list, application review (verify payment, approve, reject with reason, request info, suspend, reactivate), limits and plans, pricing, UPI/support/integration settings, announcements, audit log.
+
+### Status of external integrations
+
+| Integration | Status | Without it |
+| --- | --- | --- |
+| Supabase (DB, auth, storage) | **Required** — add keys | App shows a "setup required" page |
+| Google sign-in | Needs OAuth client in Supabase | Email/password still works |
+| UPI subscription payment | Manual: QR + reference + admin verification | — |
+| WhatsApp (Meta Cloud API) | Code complete; **off until credentials + approved template** | Copy message / open in WhatsApp |
+| Electricity bill fetch (BBPS / Setu) | Interface + sandbox adapter done; **live adapter deliberately not wired** (needs onboarding and biller metadata) | Owner types in the bill; sandbox mode for testing |
+| Email notifications | Not built (in-app notifications only) | — |
+
+The sandbox electricity adapter returns made-up bills and is labelled as such on every screen. Nothing in the app reports a message as sent, a bill as paid or an account as approved unless the server confirmed it.
+
+---
+
+## Architecture
+
+| Layer | Choice |
+| --- | --- |
+| Framework | Next.js 16 App Router, Cache Components, Server Actions, `proxy.ts` |
+| UI | React 19, Tailwind CSS v4, shadcn-style components on Radix, lucide icons, sonner |
+| Forms | React Hook Form + Zod (same schemas on client and server) |
+| Data | Supabase Postgres + Auth + Storage via `@supabase/ssr` |
+| Charts | Recharts (one chart, on Reports) |
+| PWA | Hand-written service worker (`/sw.js` route), manifest, install prompt, offline page |
+| Tests | Vitest + PGlite (runs `supabase/migrations/*.sql` for real) |
 
 ```
+supabase/migrations/     0001 core · 0002 property · 0003 billing · 0004 electricity & WhatsApp
+                         0005 onboarding & admin · 0006 RLS & grants · 0007 storage
 src/
+  proxy.ts               Session refresh + first-line route guard
   app/
-    layout.tsx            Root layout, global metadata, fonts, skip link
-    page.tsx              Homepage (sections + Organization/WebSite JSON-LD)
-    globals.css           Design tokens, textures, motion, long-form prose styles
-    about/ contact/ privacy/ terms/   Inner pages
-    not-found.tsx         Branded 404
-    icon.svg              Favicon (same geometry as the logo)
-    apple-icon.tsx        180×180 iOS icon (generated at build)
-    opengraph-image.tsx   1200×630 social card (generated at build)
-    twitter-image.tsx     Twitter card (reuses the OG image)
-    sitemap.ts robots.ts  SEO routes
+    (marketing)/         Public site — fully static (ensureStatic)
+    (auth)/              login, signup, forgot / reset password
+    auth/callback/       OAuth + email-link landing
+    onboarding/          wizard → payment → status
+    app/                 Owner app (home, tenants, rooms, payments, electricity, reminders, reports, settings…)
+    admin/               Admin panel
+    api/                 cron (daily, whatsapp) + WhatsApp webhook
+    sw.js/ manifest.ts offline/   PWA
   components/
-    branding/logo.tsx     LogoMark + Logo (light / dark / compact) + shared geometry
-    layout/               navbar, scroll-header, mobile-menu, footer, page-header
-    sections/             hero, trust-strip, problem, features, how-it-works,
-                          audience, philosophy, launch, contact
-    illustrations/        Hand-built SVG illustrations for the problem section
-    ui/                   button, badge, container, section-heading,
-                          feature-card, dashboard-preview
+    ui/                  button, input, card, dialog, action-form (form ↔ Server Action glue)
+    app/                 shell, nav, payment dialog, tenant form, documents, charges review, reminders…
+    onboarding/ auth/ pwa/ sections/ layout/ branding/
   lib/
-    config.ts             Environment-driven site config (all optional, validated)
-    constants.ts          Brand copy, nav links, legal dates
-    utils.ts              `cn()` class joiner
+    auth/session.ts      getSession · requireOwner · requireAdmin (role always read from the DB)
+    actions/             Server Actions, each wrapped in userAction / ownerAction / adminAction
+    data/                Server-side read helpers (workspace, rooms, reminders, settings, admin)
+    billing/proration.ts Pure proration maths (mirrors the SQL)
+    electricity/         Provider interface, mock + Setu adapters, allocation maths
+    whatsapp/            Message building, eligibility, Cloud API client, queue worker
+    uploads/             Upload rules, content sniffing, client-side optimise / combine-to-PDF
+    validation.ts        Zod schemas
+    i18n/                t("English", "Hinglish") helper
+tests/
+  db/                    harness (PGlite + Supabase shim), security, billing
+  unit/                  proration (incl. parity with SQL), pricing, UPI, allocation, WhatsApp, uploads
 ```
+
+### Where the important rules live
+
+Rules that must hold even if someone bypasses the UI are in the **database**:
+
+- **Tenant isolation** — RLS on every table (`owner_id = auth.uid()`), plus composite foreign keys so a row cannot reference another owner's building.
+- **No self-promotion** — role, account status, limits, prices and payment verification are not writable through the API; only `SECURITY DEFINER` functions that check the caller change them, and each writes the audit log.
+- **No double allocation** — partial unique indexes: one active allocation per bed and per tenant. Swap and move run in one transaction and only ever close old rows and add new ones.
+- **No duplicate bills** — `unique (tenant_id, period_month)`; `ensure_billing` is idempotent and safe to call on every app open and from cron.
+- **No duplicate payments** — idempotency key per submission + unique transaction reference per building. Payments are voided with a reason, never edited or deleted.
+- **Bill is "paid" only after a successful payment row** — set by trigger, never by the client.
+
+The admin can read account-level data (owners, buildings, subscriptions, payment proofs) but not tenants, tenant documents or tenant ledgers.
+
+### Billing model in one paragraph
+
+Each building has a billing day. On or after it, every active tenant gets one invoice for the period with a rent line (prorated for a mid-period join or exit by the building's rule — calendar days, 30-day month, full month — or a custom first-month amount with a reason). Electricity is added as one line when the owner confirms the month's charges; other charges and discounts are manual lines. Payments are separate rows applied to the chosen invoice first, then oldest dues; any excess is kept as advance and applied automatically to the next invoice. Outstanding = all invoices − all payments − unused advance, so opening the app mid-month always shows the right number. Deposits are tracked separately from rent.
 
 ---
 
 ## Branding
 
-The mark is a **house carrying a checkmark** — a property whose records are in order — on a
-brand-blue tile, with a warm dot as the "digital update" signal. All variants share one
-geometry object (`LOGO_GEOMETRY` in `src/components/branding/logo.tsx`):
+The mark (house + check + "digital" dot) lives in `src/components/branding/logo.tsx`; the favicon, Apple icon, OG image and PWA icons all use the same geometry. Colours and shadows are tokens in `src/app/globals.css`.
 
-| Variant                 | Where / how                                      |
-| ----------------------- | ------------------------------------------------ |
-| Primary (light bg)      | `<Logo />` — ink "Hisab" + blue "Mitra"          |
-| Dark-background         | `<Logo variant="dark" />` — used in the footer   |
-| Compact icon            | `<Logo compact />` or `<LogoMark />`             |
-| Favicon                 | `src/app/icon.svg`                               |
-| Apple touch icon / OG   | `src/app/apple-icon.tsx`, `opengraph-image.tsx`  |
-
-Palette: ink `#111827`, ink-2 `#1F2937`, brand `#4F6EF7` / `#7C8FFF`, success `#16A36A`,
-warm `#F5C451`, canvas `#F8FAFC`. Darker brand/success shades (`brand-600/700`,
-`success-700`) are used for text and buttons so they meet WCAG AA contrast.
-
----
-
-## Local setup
-
-Requirements: **Node.js 20.9+** and npm.
-
-```bash
-npm install
-cp .env.example .env.local     # optional — fill in what you have
-npm run dev                    # http://localhost:3000
-```
-
-Quality checks:
-
-```bash
-npx tsc --noEmit               # type check
-npm run lint                   # ESLint (next/core-web-vitals + TypeScript)
-npm run build                  # production build (all routes prerendered)
-npm run start                  # serve the production build locally
-```
-
----
-
-## Environment variables
-
-All are optional. Missing or invalid values are **hidden gracefully** — nothing is invented.
-
-| Variable                    | Purpose                                                                           |
-| --------------------------- | --------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SITE_URL`      | Canonical URL, e.g. `https://hisabmitra.in` (no trailing slash). Falls back to Vercel's production domain, then `http://localhost:3000`. |
-| `NEXT_PUBLIC_CONTACT_EMAIL` | Public business email — enables the mailto link in Contact, footer and JSON-LD.   |
-| `NEXT_PUBLIC_INSTAGRAM_URL` | Instagram profile (`https://` only).                                              |
-| `NEXT_PUBLIC_LINKEDIN_URL`  | LinkedIn page (`https://` only).                                                  |
-
-`NEXT_PUBLIC_*` values are inlined at build time — **redeploy after changing them**.
-
----
-
-## Deploying to Vercel (free tier)
-
-1. Push this folder to a GitHub / GitLab / Bitbucket repository.
-2. In Vercel, **Add New → Project** and import the repository. The Next.js preset is detected
-   automatically; keep the default build command (`next build`) and output settings.
-3. Under **Settings → Environment Variables**, add the variables above for the
-   *Production* (and optionally *Preview*) environments.
-4. Deploy. Because every route is static, the site is served from Vercel's CDN with
-   negligible function usage.
-
-Or with the CLI:
-
-```bash
-npm i -g vercel
-vercel           # preview deployment
-vercel --prod    # production deployment
-```
-
----
-
-## Domain configuration
-
-Suggested setup (use whichever domain you actually register, e.g. `hisabmitra.in` or `hisabmitra.com`):
-
-1. Vercel → Project → **Settings → Domains** → add both `hisabmitra.in` and `www.hisabmitra.in`.
-2. Choose the apex (`hisabmitra.in`) as primary and let `www` redirect to it (or the reverse —
-   just be consistent).
-3. At your registrar, add the DNS records Vercel shows. Typically:
-   - Apex: `A` record → `76.76.21.21`
-   - `www`: `CNAME` → `cname.vercel-dns.com`
-
-   Always use the exact values displayed in your Vercel dashboard, as they can change.
-4. Set `NEXT_PUBLIC_SITE_URL` to the primary domain (e.g. `https://hisabmitra.in`) and redeploy so
-   canonical tags, Open Graph URLs, `sitemap.xml` and `robots.txt` point to it.
-5. HTTPS certificates are issued automatically by Vercel.
-6. Optional: submit `https://<your-domain>/sitemap.xml` in Google Search Console.
-
-For a business email on the same domain (recommended for BBPS / payment-gateway onboarding),
-configure MX records with your email provider, then set `NEXT_PUBLIC_CONTACT_EMAIL`.
-
----
-
-## Honesty guardrails
-
-- Every feature is labelled **Planned feature**; a note states that none are live.
-- The hero dashboard is labelled **Illustrative product preview** and uses fictional data
-  ("Demo Residency"), with internally consistent numbers.
-- No testimonials, partner logos, user counts, countdowns, signup forms or rating schema.
-- About and Terms pages state that HisabMitra is not affiliated with any government DISCOM, UPPCL, PVVNL, NPCI or BBPS.
-- Privacy policy accurately states: no forms, no analytics, no cookies of its own, fonts self-hosted.
+No testimonials, statistics or affiliations are shown anywhere — the dashboard picture on the landing page is labelled as an illustration.

@@ -84,14 +84,12 @@ export function MobileMenu({ links }: { links: NavLink[] }) {
               </li>
             ))}
           </ul>
-          <div className="mt-2 border-t border-slate-100 p-2 pt-3">
-            <Link
-              href="/#launch"
-              onClick={() => close()}
-              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-ink text-sm font-medium text-white"
-            >
-              <span className="size-1.5 rounded-full bg-success-500" aria-hidden />
-              Coming Soon
+          <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 p-2 pt-3">
+            <Link href="/login" onClick={() => close()} className="flex h-12 items-center justify-center rounded-xl border border-slate-200 text-sm font-medium text-ink">
+              Login
+            </Link>
+            <Link href="/signup" onClick={() => close()} className="flex h-12 items-center justify-center rounded-xl bg-ink text-sm font-medium text-white">
+              Sign up
             </Link>
           </div>
         </nav>

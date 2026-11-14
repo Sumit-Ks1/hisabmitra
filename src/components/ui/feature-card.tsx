@@ -7,6 +7,8 @@ export type Feature = {
   title: string;
   description: string;
   capabilities: string[];
+  /** shown when part of the feature depends on an external approval */
+  tag?: string;
 };
 
 export function FeatureCard({
@@ -36,9 +38,11 @@ export function FeatureCard({
           <Icon className="size-5" strokeWidth={1.8} aria-hidden />
           <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-white bg-warm-400" aria-hidden />
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-brand-300 bg-brand-50/60 px-2.5 py-1 font-mono text-[0.62rem] font-medium uppercase tracking-[0.12em] text-brand-700">
-          Planned feature
-        </span>
+        {feature.tag && (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-warm-400 bg-warm-50 px-2.5 py-1 font-mono text-[0.62rem] font-medium uppercase tracking-[0.12em] text-warm-800">
+            {feature.tag}
+          </span>
+        )}
       </div>
 
       <p className="mt-6 font-mono text-[0.68rem] text-slate-400">
@@ -51,7 +55,7 @@ export function FeatureCard({
 
       <div className="mt-6 border-t border-slate-100 pt-5">
         <p className="mb-3 text-[0.7rem] font-semibold uppercase tracking-[0.1em] text-slate-400">
-          Planned capabilities
+          What you can do
         </p>
         <ul className="grid gap-2.5">
           {capabilities.map((c) => (

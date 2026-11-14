@@ -41,7 +41,7 @@ export function ContactDetails({ className }: { className?: string }) {
             <MessageCircle className="size-5" aria-hidden />
           </span>
           <p className="text-[0.95rem] leading-relaxed text-slate-600">
-            Our official contact details will be published here shortly. Please check back soon.
+            Already a customer? Open the app and go to Settings → Support for our phone and email.
           </p>
         </div>
       )}

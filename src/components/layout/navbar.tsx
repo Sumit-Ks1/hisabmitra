@@ -28,15 +28,12 @@ export function Navbar() {
           </ul>
         </nav>
 
-        <div className="hidden md:block">
-          <Link
-            href="/#launch"
-            className="inline-flex h-9 items-center gap-2 rounded-full bg-ink pl-3 pr-4 text-[0.8rem] font-medium text-white transition-colors hover:bg-ink-2"
-          >
-            <span className="relative flex size-2" aria-hidden>
-              <span className="size-2 rounded-full bg-success-500 motion-safe:animate-pulse-dot" />
-            </span>
-            Coming Soon
+        <div className="hidden items-center gap-2 md:flex">
+          <Link href="/login" className="rounded-full px-3.5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-900/[0.04] hover:text-ink">
+            Login
+          </Link>
+          <Link href="/signup" className="inline-flex h-9 items-center rounded-full bg-ink px-4 text-[0.8rem] font-medium text-white transition-colors hover:bg-ink-2">
+            Sign up
           </Link>
         </div>
 

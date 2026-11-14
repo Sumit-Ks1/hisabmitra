@@ -20,7 +20,7 @@ export function Footer() {
             <p className="mt-2 text-sm leading-relaxed">{BRAND.shortDescription}</p>
             <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 font-mono text-[0.65rem] uppercase tracking-[0.12em] text-slate-300">
               <span className="size-1.5 rounded-full bg-warm-400" aria-hidden />
-              Pre-launch · Coming soon
+              Made for PG owners in India
             </p>
           </div>
 

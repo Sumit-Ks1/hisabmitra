@@ -151,7 +151,7 @@ export function DashboardPreview({ className }: { className?: string }) {
         Illustrative product preview
         <span className="sr-only">
           {" "}
-          — a mock-up of the planned HisabMitra owner dashboard using fictional sample data.
+          — an illustration of the HisabMitra owner dashboard using fictional sample data.
         </span>
       </figcaption>
 

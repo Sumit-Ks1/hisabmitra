@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { LOGO_GEOMETRY } from "@/components/branding/logo";
 
-export const alt = "HisabMitra — PG ka hisaab, ab digital. Smart PG & hostel management software, coming soon.";
+export const alt = "HisabMitra — PG ka hisaab, ab digital. Smart PG & hostel management software.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -57,7 +57,7 @@ export default function OpengraphImage() {
             }}
           >
             <div style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: "#F5C451" }} />
-            COMING SOON
+            FOR PG OWNERS IN INDIA
           </div>
         </div>
 

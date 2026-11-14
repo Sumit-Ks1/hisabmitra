@@ -1,4 +1,7 @@
-/** Minimal className joiner — avoids pulling in clsx/tailwind-merge for a static site. */
-export function cn(...classes: Array<string | false | null | undefined>): string {
-  return classes.filter(Boolean).join(" ");
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+/** Class joiner with Tailwind conflict resolution (shadcn/ui convention). */
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(inputs));
 }
