@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/input";
 import { addRoomAction, bulkAddRoomsAction, swapBedsAction } from "@/lib/actions/rooms";
 import { useT } from "@/lib/i18n/client";
+import { bulkRoomName, startFloorFrom } from "@/lib/validation";
 
 export function RoomTypeSelect({ defaultValue = "shared", id = "room_type" }: { defaultValue?: string; id?: string }) {
   const t = useT();
@@ -76,8 +77,43 @@ export function AddRoomDialog({ buildingId, perBed, defaultFloor }: { buildingId
   );
 }
 
-export function BulkRoomsDialog({ buildingId, perBed, primary }: { buildingId: string; perBed: boolean; primary?: boolean }) {
+/** Whole number from an input's text, or null while it is empty / invalid. */
+const num = (s: string) => (/^\d+$/.test(s.trim()) ? Number(s.trim()) : null);
+
+export function BulkRoomsDialog({
+  buildingId,
+  perBed,
+  roomsLeft,
+  primary,
+}: {
+  buildingId: string;
+  perBed: boolean;
+  roomsLeft: number;
+  primary?: boolean;
+}) {
   const t = useT();
+  const [floorsText, setFloorsText] = useState("1");
+  const [startText, setStartText] = useState("1");
+  const [perFloorText, setPerFloorText] = useState("4");
+  const [bedsText, setBedsText] = useState("2");
+
+  // Live preview of exactly what will be created, so a wrong box is obvious before saving.
+  const floors = num(floorsText);
+  const startRaw = num(startText);
+  const start = startRaw === null ? null : startFloorFrom(startRaw);
+  const perFloor = num(perFloorText);
+  const beds = num(bedsText);
+  let preview: { lines: string[]; rooms: number; beds: number } | null = null;
+  if (floors && floors <= 30 && start !== null && start <= 30 && perFloor && perFloor <= 60) {
+    const lines = Array.from({ length: Math.min(floors, 4) }, (_, i) => {
+      const f = start + i;
+      return perFloor === 1 ? bulkRoomName(f, 1) : `${bulkRoomName(f, 1)}–${bulkRoomName(f, perFloor)}`;
+    });
+    if (floors > 4) lines.push(t(`…up to floor ${start + floors - 1}`, `…floor ${start + floors - 1} tak`));
+    preview = { lines, rooms: floors * perFloor, beds: floors * perFloor * (beds ?? 0) };
+  }
+  const overLimit = preview !== null && preview.rooms > roomsLeft;
+
   return (
     <FormDialog
       action={bulkAddRoomsAction}
@@ -93,20 +129,49 @@ export function BulkRoomsDialog({ buildingId, perBed, primary }: { buildingId: s
       <input type="hidden" name="building_id" value={buildingId} />
       <div className="grid grid-cols-2 gap-3">
         <Field label={t("Number of floors", "Kitne floors")} htmlFor="floors">
-          <Input id="floors" name="floors" type="number" inputMode="numeric" min={1} max={30} defaultValue={1} required />
+          <Input id="floors" name="floors" type="number" inputMode="numeric" min={1} max={30} value={floorsText} onChange={(e) => setFloorsText(e.target.value)} required />
           <FieldError name="floors" />
         </Field>
-        <Field label={t("First floor number", "Pehla floor number")} htmlFor="start_floor" hint={t("0 = ground", "0 = ground")}>
-          <Input id="start_floor" name="start_floor" type="number" inputMode="numeric" min={0} max={30} defaultValue={1} required />
+        <Field
+          label={t("Start from floor", "Kis floor se shuru")}
+          htmlFor="start_floor"
+          hint={t("1 → rooms 101, 102… · 0 → G01 (ground)", "1 → rooms 101, 102… · 0 → G01 (ground)")}
+        >
+          <Input id="start_floor" name="start_floor" type="number" inputMode="numeric" min={0} value={startText} onChange={(e) => setStartText(e.target.value)} required />
+          <FieldError name="start_floor" />
         </Field>
         <Field label={t("Rooms on each floor", "Har floor par rooms")} htmlFor="rooms_per_floor">
-          <Input id="rooms_per_floor" name="rooms_per_floor" type="number" inputMode="numeric" min={1} max={60} defaultValue={4} required />
+          <Input id="rooms_per_floor" name="rooms_per_floor" type="number" inputMode="numeric" min={1} max={60} value={perFloorText} onChange={(e) => setPerFloorText(e.target.value)} required />
           <FieldError name="rooms_per_floor" />
         </Field>
         <Field label={t("Beds in each room", "Har room mein beds")} htmlFor="beds">
-          <Input id="beds" name="beds" type="number" inputMode="numeric" min={1} max={30} defaultValue={2} required />
+          <Input id="beds" name="beds" type="number" inputMode="numeric" min={1} max={30} value={bedsText} onChange={(e) => setBedsText(e.target.value)} required />
+          <FieldError name="beds" />
         </Field>
       </div>
+      {preview && (
+        <div
+          className={
+            overLimit
+              ? "rounded-xl border border-danger-200 bg-danger-50 px-3.5 py-2.5 text-[0.88rem] text-danger-700"
+              : "rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-[0.88rem] text-slate-700"
+          }
+          aria-live="polite"
+        >
+          <p className="font-medium text-ink">
+            {t(`Will create ${preview.rooms} rooms, ${preview.beds} beds`, `${preview.rooms} rooms, ${preview.beds} beds banenge`)}
+          </p>
+          <p className="mt-0.5">{preview.lines.join(" · ")}</p>
+          {overLimit && (
+            <p className="mt-1 font-medium">
+              {t(
+                `Your plan has ${roomsLeft} rooms left. Reduce floors or rooms per floor.`,
+                `Aapke plan mein ${roomsLeft} rooms baaki hain. Floors ya rooms kam karein.`,
+              )}
+            </p>
+          )}
+        </div>
+      )}
       <Field label={t("Room type", "Room type")} htmlFor="room_type">
         <RoomTypeSelect />
       </Field>

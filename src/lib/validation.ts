@@ -34,8 +34,26 @@ export const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date / 
 export const uuid = z.uuid("Invalid selection");
 export const monthString = z.string().regex(/^\d{4}-\d{2}-01$/, "Invalid month");
 
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const int = (min: number, max: number, label: string) =>
-  z.coerce.number({ error: `Enter ${label}` }).int(`Enter ${label}`).min(min, `Minimum ${min}`).max(max, `Maximum ${max}`);
+  z.coerce
+    .number({ error: `Enter ${label}` })
+    .int(`Enter ${label}`)
+    .min(min, `${cap(label)}: minimum ${min}`)
+    .max(max, `${cap(label)}: maximum ${max}`);
+
+/**
+ * Quick setup asks for the starting floor, but owners often type the first room
+ * number instead (101, 201, 001). Read 100+ as a room number: 101 → floor 1.
+ */
+export function startFloorFrom(value: number): number {
+  return value >= 100 ? Math.floor(value / 100) : value;
+}
+
+/** Room numbers made by quick setup: floor 1 → 101, 102…; ground floor → G01, G02… */
+export function bulkRoomName(floor: number, n: number): string {
+  return floor === 0 ? `G${String(n).padStart(2, "0")}` : `${floor}${String(n).padStart(2, "0")}`;
+}
 
 /* ---------------------------------- auth ---------------------------------- */
 export const emailSchema = z.email("Enter a valid email / Sahi email daalein").max(254).transform((v) => v.trim().toLowerCase());
@@ -132,7 +150,9 @@ export const roomEditSchema = z.object({
 export const bulkRoomsSchema = z.object({
   floors: int(1, 30, "floors"),
   rooms_per_floor: int(1, 60, "rooms per floor"),
-  start_floor: int(0, 30, "first floor number"),
+  start_floor: int(0, 3099, "starting floor")
+    .transform(startFloorFrom)
+    .pipe(z.number().max(30, "Starting floor: maximum 30 (enter 1 for rooms 101, 102…)")),
   beds: int(1, 30, "beds per room"),
   rent: money,
   deposit: money,

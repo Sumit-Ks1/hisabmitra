@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { todayIST } from "@/lib/format";
 import { isUuid } from "@/lib/uploads/rules";
-import { bulkRoomsSchema, isoDate, roomEditSchema, roomSchema } from "@/lib/validation";
+import { bulkRoomName, bulkRoomsSchema, isoDate, roomEditSchema, roomSchema } from "@/lib/validation";
 import { formToObject, must, ownerAction, validate, type ActionResult } from "./helpers";
 
 const done = () => revalidatePath("/app", "layout");
@@ -37,8 +37,7 @@ export async function bulkAddRoomsAction(fd: FormData): Promise<ActionResult> {
     for (let i = 0; i < d.floors; i++) {
       const floor = d.start_floor + i;
       for (let n = 1; n <= d.rooms_per_floor; n++) {
-        const name = floor === 0 ? `G${String(n).padStart(2, "0")}` : `${floor}${String(n).padStart(2, "0")}`;
-        rooms.push({ floor, name, room_type: d.room_type, beds: d.beds, rent: d.rent, deposit: d.deposit });
+        rooms.push({ floor, name: bulkRoomName(floor, n), room_type: d.room_type, beds: d.beds, rent: d.rent, deposit: d.deposit });
       }
     }
     const n = must(await supabase.rpc("bulk_add_rooms", { p_building: f.building_id, p_rooms: rooms })) as number;

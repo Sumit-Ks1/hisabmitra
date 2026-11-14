@@ -8,6 +8,33 @@ import { estimateSubscription, FALLBACK_PRICING } from "@/lib/pricing";
 import { isOwnedPath, safeDisplayName, sniffMime } from "@/lib/uploads/rules";
 import { buildUpiUri, isValidUpiId, normalizeUpiReference } from "@/lib/upi";
 import { checkEligibility, dedupeKey, reminderText, templateParams, type ReminderData } from "@/lib/whatsapp/message";
+import { bulkRoomName, bulkRoomsSchema } from "@/lib/validation";
+
+describe("quick room setup", () => {
+  const base = { floors: "4", rooms_per_floor: "10", beds: "2", rent: "0", deposit: "0", room_type: "shared" };
+  const startOf = (v: string) => bulkRoomsSchema.safeParse({ ...base, start_floor: v });
+
+  it("takes a floor number as-is", () => {
+    expect(startOf("1").data?.start_floor).toBe(1);
+    expect(startOf("0").data?.start_floor).toBe(0);
+  });
+  it("reads a room number typed into the floor box as its floor (101 → 1)", () => {
+    expect(startOf("101").data?.start_floor).toBe(1);
+    expect(startOf("201").data?.start_floor).toBe(2);
+    expect(startOf("001").data?.start_floor).toBe(1);
+  });
+  it("still refuses nonsense, and says which field", () => {
+    const r = startOf("5000");
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toMatch(/starting floor/i);
+    expect(startOf("31").success).toBe(false);
+  });
+  it("names rooms by floor", () => {
+    expect(bulkRoomName(1, 1)).toBe("101");
+    expect(bulkRoomName(4, 10)).toBe("410");
+    expect(bulkRoomName(0, 3)).toBe("G03");
+  });
+});
 
 describe("billing periods", () => {
   it("calendar month when billing day is 1", () => {

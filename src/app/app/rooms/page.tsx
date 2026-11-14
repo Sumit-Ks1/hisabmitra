@@ -55,7 +55,7 @@ export default async function RoomsPage() {
           body={t("Use Quick setup to create all floors and rooms in one go, or add rooms one by one.", "Jaldi setup se saare floors aur rooms ek saath banayein, ya ek-ek karke jodein.")}
           action={
             <div className="flex flex-wrap justify-center gap-2.5">
-              <BulkRoomsDialog buildingId={building.id} perBed={perBed} primary />
+              <BulkRoomsDialog buildingId={building.id} perBed={perBed} roomsLeft={limit - rooms.length} primary />
               <AddRoomDialog buildingId={building.id} perBed={perBed} defaultFloor={1} />
             </div>
           }
@@ -68,7 +68,7 @@ export default async function RoomsPage() {
                 <ArrowLeftRight aria-hidden /> {t("Swap rooms", "Rooms swap karein")}
               </LinkButton>
             )}
-            {!atLimit && <BulkRoomsDialog buildingId={building.id} perBed={perBed} />}
+            {!atLimit && <BulkRoomsDialog buildingId={building.id} perBed={perBed} roomsLeft={limit - rooms.length} />}
           </div>
 
           <ul className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-[0.8rem] text-slate-600" aria-label="Legend">
