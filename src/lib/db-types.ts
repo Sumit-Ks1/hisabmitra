@@ -41,6 +41,8 @@ export type OwnerAccount = {
 export type Building = {
   id: string;
   owner_id: string;
+  /** IST date ensure_billing last did its daily check (null = never). */
+  last_cycle_check: string | null;
   name: string;
   address: string;
   state: string;

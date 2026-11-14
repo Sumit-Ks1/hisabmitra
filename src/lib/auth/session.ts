@@ -1,5 +1,5 @@
 import "server-only";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { cache } from "react";
@@ -26,18 +26,34 @@ export type SessionContext = {
  *  - the role comes from the database, never from anything the browser sent
  * Cached per request, so pages, layouts and actions can all call it freely.
  */
-export const getSession = cache(async (): Promise<SessionContext | null> => {
+/**
+ * Step one of every request: the user-bound client and the verified auth user.
+ * Split out so callers that already know what they need next (getWorkspace)
+ * can start their own queries alongside the profile lookup.
+ */
+export const getAuthUser = cache(async (): Promise<{ supabase: SupabaseClient; user: User } | null> => {
   if (!supabaseConfigured) return null;
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
-  const user = data.user;
+  return { supabase, user: data.user };
+});
+
+export const getSession = cache(async (): Promise<SessionContext | null> => {
+  const auth = await getAuthUser();
+  if (!auth) return null;
+  const { supabase, user } = auth;
   const email = (user.email ?? "").toLowerCase();
 
   const loadProfile = async () =>
     (await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()).data as Profile | null;
 
-  let profile = await loadProfile();
+  // Independent lookups: run them together, not one after the other.
+  const [initialProfile, ownerRes] = await Promise.all([
+    loadProfile(),
+    supabase.from("pg_owners").select("*").eq("id", user.id).maybeSingle(),
+  ]);
+  let profile = initialProfile;
   if (!profile) return null;
 
   // Admin bootstrap: only the exact, verified ADMIN_EMAIL, only from the server,
@@ -53,8 +69,7 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
     if (ok) profile = (await loadProfile()) ?? profile;
   }
 
-  const owner = (await supabase.from("pg_owners").select("*").eq("id", user.id).maybeSingle())
-    .data as OwnerAccount | null;
+  const owner = ownerRes.data as OwnerAccount | null;
 
   const lang: Lang = profile.language === "en" ? "en" : "hinglish";
   return {
