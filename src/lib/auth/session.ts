@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { cache } from "react";
 import type { Lang, OwnerAccount, Profile } from "@/lib/db-types";
 import { serverEnv } from "@/lib/env";
@@ -78,7 +79,13 @@ export function homeFor(ctx: SessionContext): string {
 }
 
 export async function requireUser(): Promise<SessionContext> {
-  if (!supabaseConfigured) redirect("/setup-required");
+  if (!supabaseConfigured) {
+    // Mark the request as dynamic first. Without this, a build that runs before
+    // the Supabase env vars exist sees these pages as fully static and fails
+    // on dynamic routes ("runtime data in generateMetadata").
+    await connection();
+    redirect("/setup-required");
+  }
   const ctx = await getSession();
   if (!ctx) redirect("/login");
   return ctx;
